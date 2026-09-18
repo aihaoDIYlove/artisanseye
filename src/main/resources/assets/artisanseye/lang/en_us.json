@@ -1,3 +1,5 @@
 {
-  "tooltip.artisanseye.step_offset": "Work offset: %s"
+  "tooltip.artisanseye.step_offset": "Work offset: %s",
+  "label.artisanseye.remaining": "%s left",
+  "label.artisanseye.unsolvable": "no path"
 }

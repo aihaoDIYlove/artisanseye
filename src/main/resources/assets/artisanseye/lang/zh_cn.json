@@ -1,3 +1,5 @@
 {
-  "tooltip.artisanseye.step_offset": "锻造偏移量：%s"
+  "tooltip.artisanseye.step_offset": "锻造偏移量：%s",
+  "label.artisanseye.remaining": "剩 %s 步",
+  "label.artisanseye.unsolvable": "无解"
 }
