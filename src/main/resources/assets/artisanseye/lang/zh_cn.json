@@ -1,5 +1,8 @@
 {
   "tooltip.artisanseye.step_offset": "锻造偏移量：%s",
   "label.artisanseye.remaining": "剩 %s 步",
-  "label.artisanseye.unsolvable": "无解"
+  "label.artisanseye.unsolvable": "无解",
+  "hint.artisanseye.kaolin": "高岭土：%s格",
+  "hint.artisanseye.kaolin.here": "高岭土就在脚下",
+  "hint.artisanseye.kaolin.more": "（另有%s处）"
 }
