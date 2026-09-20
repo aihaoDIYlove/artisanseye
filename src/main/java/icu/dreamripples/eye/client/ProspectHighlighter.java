@@ -39,6 +39,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.tags.TagKey;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -54,15 +55,16 @@ import org.joml.Matrix4f;
  * <p>
  * 数据链路（均已对照源码核实）：
  * <ul>
- * <li><b>触发</b>：TFC 的勘探逻辑全部在服务端分支执行，客户端只能自行识别。监听
+ * <li><b>触发</b>：TFC 与 Precision Prospecting（可选前置，见
+ * {@link PrecProsCompat}）的勘探逻辑全部在服务端分支执行，客户端只能自行识别。监听
  * RightClickBlock 后不立即渲染——NeoForge 的 performUseItemOn 中该事件早于冷却检查
  * 与方块自身交互（后者会吞掉点击），故先做冷却预检防连点误触发，再等冷却实际生效
  * （服务端 addCooldown 自动同步到客户端）作为"勘探确实发生了"的确认信号，约数 tick 内
  * 未确认则丢弃。</li>
- * <li><b>扫描复刻</b>：在客户端区块上复刻 TFC 扫描（getRepresentative 归并矿品位阶 +
- * PROSPECTABLE tag），并按相同种子（Helpers.hash(…, pos)）复刻假阴性 roll——假阴性时不高亮，
- * 与 TFC 行动栏文案永远一致。该 roll 跨 JVM 精确；仅"报告哪种矿"的选取在专用服上不保序，
- * 而本特性高亮全部矿脉，不受影响。</li>
+ * <li><b>扫描复刻</b>：按工具类型在客户端区块上复刻其扫描（getRepresentative 归并矿品位阶 +
+ * 各自的 PROSPECTABLE tag），并按各自盐值（Helpers.hash(盐, pos)）复刻假阴性 roll——假阴性时
+ * 不高亮，与原版行动栏文案永远一致。两个 roll 跨 JVM 精确；仅"报告哪种矿"的选取在
+ * 专用服上不保序，而本特性高亮全部矿脉，不受影响。</li>
  * <li><b>渲染</b>：AFTER_TRIPWIRE_BLOCKS 阶段（AFTER_TRANSLUCENT 对半透明排序不友好，见
  * Stage javadoc）。提交管线照搬 TC-VeinGlow（MIT，同 MC 1.21.1/NeoForge）验证过的路径：
  * 自建空 PoseStack 只做 translate(−相机)，顶点用 {@code addVertex(pose, 世界坐标)} 把矩阵
@@ -166,8 +168,8 @@ public final class ProspectHighlighter
 
     private ProspectHighlighter() {}
 
-    /** 等待确认的一次右键（PropickItem 实例只用于查冷却） */
-    private record PendingUse(Item propick, BlockPos pos, long deadline) {}
+    /** 等待确认的一次右键（propick 实例只用于查冷却；face 供 PP 位移盒计算勘探方向） */
+    private record PendingUse(Item propick, BlockPos pos, Direction face, long deadline) {}
 
     /** 一次已确认勘探的高亮缓存（不可变快照，按帧只读遍历） */
     private record Scan(long startTime, Map<BlockPos, Integer> colors) {}
@@ -182,16 +184,18 @@ public final class ProspectHighlighter
         {
             return;
         }
-        if (!(event.getItemStack().getItem() instanceof PropickItem propick))
+        final Item item = event.getItemStack().getItem();
+        if (!(item instanceof PropickItem) && !PrecProsCompat.isProspector(item))
         {
             return;
         }
         // 冷却中的点击到不了 useOn（冷却检查在事件之后），直接无视，防连点误触发
-        if (player.getCooldowns().isOnCooldown(propick))
+        if (player.getCooldowns().isOnCooldown(item))
         {
             return;
         }
-        pending = new PendingUse(propick, event.getPos(), player.level().getGameTime() + CONFIRM_TIMEOUT_TICKS);
+        pending = new PendingUse(item, event.getPos(), event.getFace(),
+            player.level().getGameTime() + CONFIRM_TIMEOUT_TICKS);
     }
 
     @SubscribeEvent
@@ -209,7 +213,7 @@ public final class ProspectHighlighter
         {
             if (mc.player.getCooldowns().isOnCooldown(pending.propick()))
             {
-                startScan(mc.level, pending.propick(), pending.pos());
+                startScan(mc.level, pending.propick(), pending.pos(), pending.face());
                 pending = null;
             }
             else if (now > pending.deadline())
@@ -223,29 +227,77 @@ public final class ProspectHighlighter
         }
     }
 
-    /** 复刻 TFC 扫描 + 假阴性判定，生成高亮快照（propick = 触发本次勘探的那支，可能持有于副手） */
-    private static void startScan(ClientLevel level, Item propick, BlockPos center)
+    /**
+     * 按工具类型复刻其扫描 + 假阴性判定，生成高亮快照（propick = 触发本次勘探的那支，可能持有于副手）。
+     * TFC PropickItem：以点击点为中心 ±RADIUS 立方盒、PROSPECTABLE tag、盐 19827384739241223；
+     * Precision Prospecting：主半径盒 + 点击面反面方向的位移次级盒、私有 tag、盐 1564454769121215456
+     * （参数逐项见 PrecProsCompat）。
+     */
+    private static void startScan(ClientLevel level, Item propick, BlockPos center, Direction face)
     {
-        // 假阴性判定与 PropickItem.useOn 逐行对应：点击处本身即矿则不 roll；否则按概率"未见矿脉"→ 不高亮
+        final TagKey<Block> tag;
+        final float falseNegativeChance;
+        final long salt;
+        int x1, y1, z1, x2, y2, z2;
+        if (propick instanceof PropickItem)
+        {
+            tag = TFCTags.Blocks.PROSPECTABLE;
+            falseNegativeChance = falseNegativeChance(propick);
+            salt = FALSE_NEGATIVE_SALT;
+            final int radius = PropickItem.RADIUS;
+            x1 = center.getX() - radius;
+            y1 = center.getY() - radius;
+            z1 = center.getZ() - radius;
+            x2 = center.getX() + radius;
+            y2 = center.getY() + radius;
+            z2 = center.getZ() + radius;
+        }
+        else if (PrecProsCompat.isProspector(propick))
+        {
+            tag = PrecProsCompat.prospectTag(propick);
+            falseNegativeChance = PrecProsCompat.falseNegativeChance(propick);
+            salt = PrecProsCompat.FALSE_NEGATIVE_SALT;
+            final int primary = PrecProsCompat.primaryRadius(propick);
+            final int secondary = PrecProsCompat.secondaryRadius(propick);
+            final int displacement = PrecProsCompat.displacement(propick);
+            x1 = center.getX() - primary;
+            y1 = center.getY() - primary;
+            z1 = center.getZ() - primary;
+            x2 = center.getX() + primary;
+            y2 = center.getY() + primary;
+            z2 = center.getZ() + primary;
+            // 勘探方向 = 点击面的反面；该轴换成位移后的次级盒（ProspectorItem.useOn 的 switch 语义）
+            final Direction dir = face.getOpposite();
+            final int axisOffset = dir.getAxisDirection().getStep() * displacement;
+            switch (dir.getAxis())
+            {
+                case X -> { x1 = center.getX() + axisOffset - secondary; x2 = center.getX() + axisOffset + secondary; }
+                case Y -> { y1 = center.getY() + axisOffset - secondary; y2 = center.getY() + axisOffset + secondary; }
+                case Z -> { z1 = center.getZ() + axisOffset - secondary; z2 = center.getZ() + axisOffset + secondary; }
+            }
+        }
+        else
+        {
+            return;
+        }
+
+        // 假阴性判定与两个 mod 的 useOn 逐行对应：点击处本身即可勘探则不 roll；否则按概率"未见矿脉"→ 不高亮
         final BlockState clicked = level.getBlockState(center);
-        if (!Helpers.isBlock(clicked, TFCTags.Blocks.PROSPECTABLE))
+        if (!Helpers.isBlock(clicked, tag))
         {
             final Random random = new Random();
-            random.setSeed(Helpers.hash(FALSE_NEGATIVE_SALT, center));
-            if (random.nextFloat() < falseNegativeChance(propick))
+            random.setSeed(Helpers.hash(salt, center));
+            if (random.nextFloat() < falseNegativeChance)
             {
                 return;
             }
         }
 
         final Map<BlockPos, Integer> colors = new HashMap<>();
-        final int radius = PropickItem.RADIUS;
-        for (BlockPos cursor : BlockPos.betweenClosed(
-            center.getX() - radius, center.getY() - radius, center.getZ() - radius,
-            center.getX() + radius, center.getY() + radius, center.getZ() + radius))
+        for (BlockPos cursor : BlockPos.betweenClosed(x1, y1, z1, x2, y2, z2))
         {
             final Block block = PropickItem.getRepresentative(level.getBlockState(cursor).getBlock());
-            if (Helpers.isBlock(block, TFCTags.Blocks.PROSPECTABLE))
+            if (Helpers.isBlock(block, tag))
             {
                 colors.put(cursor.immutable(), oreColor(block));
             }
