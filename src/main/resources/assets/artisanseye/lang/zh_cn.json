@@ -4,5 +4,6 @@
   "label.artisanseye.unsolvable": "无解",
   "hint.artisanseye.kaolin": "高岭土：%s格",
   "hint.artisanseye.kaolin.here": "高岭土就在脚下",
-  "hint.artisanseye.kaolin.more": "（另有%s处）"
+  "hint.artisanseye.kaolin.more": "（另有%s处）",
+  "label.artisanseye.placed_vessel_empty": "空"
 }

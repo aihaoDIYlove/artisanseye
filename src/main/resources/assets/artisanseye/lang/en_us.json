@@ -4,5 +4,6 @@
   "label.artisanseye.unsolvable": "no path",
   "hint.artisanseye.kaolin": "Kaolin: %s blocks",
   "hint.artisanseye.kaolin.here": "Kaolin is right beneath you",
-  "hint.artisanseye.kaolin.more": " (%s more)"
+  "hint.artisanseye.kaolin.more": " (%s more)",
+  "label.artisanseye.placed_vessel_empty": "Empty"
 }
