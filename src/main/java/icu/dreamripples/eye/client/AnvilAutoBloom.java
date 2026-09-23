@@ -37,7 +37,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * 自动锻铁：把生铁方坯全自动敲成锻铁锭，成品收回背包（满则按 Q 语义丢弃），再自动填充下一块，
- * 直至背包没有温度合适的铁坯。
+ * 直至背包没有温度合适的铁坯。运行中发现焊接槽（第二输入）里有方坯会自动搬回背包——主槽被占用的
+ * 瞬间任何一次 shift-click 都会被原版路由到那里，且永远不会被加工。
  */
 @EventBusSubscriber(modid = ArtisansEye.MODID, value = Dist.CLIENT)
 public final class AnvilAutoBloom
@@ -58,7 +59,7 @@ public final class AnvilAutoBloom
     private static final int MAX_STALLS = 2;
 
     /** 上一个已发送、尚未在同步状态确认的动作 */
-    private enum Action { NONE, PRESS, FILL, COLLECT_QUICK, COLLECT_THROW }
+    private enum Action { NONE, PRESS, FILL, COLLECT_QUICK, COLLECT_SECOND, COLLECT_THROW }
 
     private static boolean autoActive;
     private static int tickCounter;
@@ -197,11 +198,13 @@ public final class AnvilAutoBloom
 
         final AnvilBlockEntity anvil = screen.getMenu().getBlockEntity();
         final ItemStack input = anvil.getInventory().getStackInSlot(AnvilBlockEntity.SLOT_INPUT_MAIN);
+        final ItemStack second = anvil.getInventory().getStackInSlot(AnvilBlockEntity.SLOT_INPUT_SECOND);
         final Forging forging = anvil.getMainInputForging();
         final AnvilRecipe recipe = forging.getRecipe();
 
-        // 指纹：主输入物品 + 数量 + 锻打进度/窗口 —— 任何动作（敲击/填充/收回/丢弃）生效都会改变它
+        // 指纹：两个输入槽的物品+数量 + 锻打进度/窗口 —— 任何动作（敲击/填充/收回/丢弃）生效都会改变它
         final String fingerprint = input.getItem() + ":" + input.getCount()
+            + "|" + second.getItem() + ":" + second.getCount()
             + "|" + forging.work() + "|" + forging.lastSteps();
 
         if (lastAction != Action.NONE)
@@ -209,14 +212,17 @@ public final class AnvilAutoBloom
             if (fingerprint.equals(lastFingerprint))
             {
                 // 上一个动作尚未反映到同步状态
-                if (lastAction == Action.COLLECT_QUICK && ++collectTries >= 2)
+                if ((lastAction == Action.COLLECT_QUICK || lastAction == Action.COLLECT_SECOND) && ++collectTries >= 2)
                 {
                     // shift-click 两个周期都没搬走 = 背包满了 → 按 Q 语义丢在地上
+                    final int throwSlot = lastAction == Action.COLLECT_SECOND
+                        ? AnvilBlockEntity.SLOT_INPUT_SECOND
+                        : AnvilBlockEntity.SLOT_INPUT_MAIN;
                     collectTries = 0;
                     stallCount = 0;
                     lastAction = Action.COLLECT_THROW;
                     mc.gameMode.handleInventoryMouseClick(screen.getMenu().containerId,
-                        AnvilBlockEntity.SLOT_INPUT_MAIN, 0, ClickType.THROW, mc.player);
+                        throwSlot, 0, ClickType.THROW, mc.player);
                     return;
                 }
                 if (++stallCount > MAX_STALLS)
@@ -242,6 +248,17 @@ public final class AnvilAutoBloom
             lastAction = Action.COLLECT_QUICK;
             mc.gameMode.handleInventoryMouseClick(screen.getMenu().containerId,
                 AnvilBlockEntity.SLOT_INPUT_MAIN, 0, ClickType.QUICK_MOVE, mc.player);
+            return;
+        }
+
+        // 焊接槽（第二输入）自清理：主槽被占用的瞬间任何一次 shift-click 都会把方坯路由到这里
+        // （原版 moveItemStackTo 扫描顺序），而它永远不会被加工。发现方坯就搬回背包，只动方坯。
+        if (isBloom(second))
+        {
+            lastFingerprint = fingerprint;
+            lastAction = Action.COLLECT_SECOND;
+            mc.gameMode.handleInventoryMouseClick(screen.getMenu().containerId,
+                AnvilBlockEntity.SLOT_INPUT_SECOND, 0, ClickType.QUICK_MOVE, mc.player);
             return;
         }
 
@@ -303,7 +320,14 @@ public final class AnvilAutoBloom
         }
         lastFingerprint = fingerprint;
         lastAction = Action.FILL;
-        mc.gameMode.handleInventoryMouseClick(screen.getMenu().containerId, menuSlot, 0, ClickType.QUICK_MOVE, mc.player);
+        // 不能用 QUICK_MOVE 填充：moveItemStackTo 只要搬动了就返回 true，TFC quickMoveStack 对部分
+        // 搬运返回非空的 original 拷贝，原版 while 循环会一路填到无处可放——一组 16 会同时进主槽和焊接槽
+        // （手动 shift+点击同理，由焊接槽自清理兜底）。三连 PICKUP：拿起整组 → 主槽放 1（槽上限 1，
+        // safeInsert 受限，光标留余量）→ 余量放回原背包槽。三包同刻按序处理，方坯只可能落在主槽。
+        final AbstractContainerMenu menu = screen.getMenu();
+        mc.gameMode.handleInventoryMouseClick(menu.containerId, menuSlot, 0, ClickType.PICKUP, mc.player);
+        mc.gameMode.handleInventoryMouseClick(menu.containerId, AnvilBlockEntity.SLOT_INPUT_MAIN, 0, ClickType.PICKUP, mc.player);
+        mc.gameMode.handleInventoryMouseClick(menu.containerId, menuSlot, 0, ClickType.PICKUP, mc.player);
     }
 
     private static void stop()
