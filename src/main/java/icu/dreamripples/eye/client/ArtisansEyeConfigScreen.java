@@ -36,7 +36,7 @@ public class ArtisansEyeConfigScreen extends Screen
                 Component.translatable("artisanseye.config.auto_forge"),
                 (button, value) -> setAutoForge(value)));
 
-        final PressIntervalSlider slider = new PressIntervalSlider(x, this.height / 2 + 12, CONTROL_WIDTH, 20,
+        final PressIntervalSlider slider = new PressIntervalSlider(x, this.height / 2 + 18, CONTROL_WIDTH, 20,
             ArtisansEyeConfig.pressInterval());
         slider.setTooltip(Tooltip.create(Component.translatable("artisanseye.config.press_interval.desc")));
         addRenderableWidget(slider);
@@ -61,6 +61,13 @@ public class ArtisansEyeConfigScreen extends Screen
         gui.drawCenteredString(this.font,
             Component.translatable("artisanseye.config.auto_forge.desc"),
             this.width / 2, this.height / 2 - 4, 0xA0A0A0);
+        if (ArtisansEyeConfig.isDevAccount())
+        {
+            // 开关显示的是文件里的值，测试账号的强制开启会导致行为与开关不一致，这里说明原因
+            gui.drawCenteredString(this.font,
+                Component.translatable("artisanseye.config.dev_hint"),
+                this.width / 2, this.height / 2 + 6, 0x55FF55);
+        }
     }
 
     @Override

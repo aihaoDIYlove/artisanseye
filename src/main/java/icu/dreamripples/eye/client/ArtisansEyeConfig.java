@@ -1,5 +1,9 @@
 package icu.dreamripples.eye.client;
 
+import java.util.Locale;
+import java.util.Set;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
@@ -10,6 +14,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class ArtisansEyeConfig
 {
+    // 测试账号白名单
+    private static final Set<String> DEV_ACCOUNTS = Set.of("dev", "dreamripples", "lihua273");
+
     /** 自动锻造：铁砧界面显示"自动"按钮并允许模组代为敲击。默认关闭（会替玩家真实下击）。 */
     public static final ModConfigSpec.BooleanValue AUTO_FORGE;
 
@@ -34,10 +41,23 @@ public final class ArtisansEyeConfig
 
     private ArtisansEyeConfig() {}
 
-    /** 配置加载前的理论窗口期按默认值（关）处理 */
+    /**
+     * 生效判定 = 配置值 或 测试账号命中。配置未加载的理论窗口期一律按关处理。
+     */
     public static boolean autoForgeEnabled()
     {
-        return SPEC.isLoaded() && AUTO_FORGE.getAsBoolean();
+        return SPEC.isLoaded() && (AUTO_FORGE.getAsBoolean() || isDevAccount());
+    }
+
+    /** 供配置屏提示用；客户端未完全启动（理论窗口期）时按非测试账号处理 */
+    static boolean isDevAccount()
+    {
+        final Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.getUser() == null)
+        {
+            return false;
+        }
+        return DEV_ACCOUNTS.contains(mc.getUser().getName().toLowerCase(Locale.ROOT));
     }
 
     public static int pressInterval()
