@@ -31,8 +31,6 @@ import org.jetbrains.annotations.Nullable;
 @EventBusSubscriber(modid = ArtisansEye.MODID, value = Dist.CLIENT)
 public final class AnvilAutoForge
 {
-    /** 敲击节奏 tick */
-    private static final int PRESS_INTERVAL_TICKS = 2;
     /** 连续 MAX_STALLS 个周期未等到上一击的同步确认即停（服务端拒绝/严重延迟兜底） */
     private static final int MAX_STALLS = 2;
     private static final int BUTTON_HEIGHT = 12;
@@ -85,7 +83,7 @@ public final class AnvilAutoForge
     @SubscribeEvent
     public static void onScreenRender(ScreenEvent.Render.Post event)
     {
-        if (!(event.getScreen() instanceof AnvilScreen screen))
+        if (!(event.getScreen() instanceof AnvilScreen screen) || !ArtisansEyeConfig.autoForgeEnabled())
         {
             return;
         }
@@ -109,7 +107,7 @@ public final class AnvilAutoForge
     @SubscribeEvent
     public static void onMousePress(ScreenEvent.MouseButtonPressed.Pre event)
     {
-        if (!(event.getScreen() instanceof AnvilScreen screen))
+        if (!(event.getScreen() instanceof AnvilScreen screen) || !ArtisansEyeConfig.autoForgeEnabled())
         {
             return;
         }
@@ -124,7 +122,7 @@ public final class AnvilAutoForge
                 autoActive = true;
                 stallCount = 0;
                 lastFingerprint = null;
-                tickCounter = PRESS_INTERVAL_TICKS; // 立即开始第一击
+                tickCounter = ArtisansEyeConfig.pressInterval(); // 按当前节奏立即开始第一击
             }
             event.setCanceled(true); // 按钮区域无 TFC 控件，吞掉点击避免误触
         }
@@ -135,6 +133,10 @@ public final class AnvilAutoForge
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event)
     {
+        if (autoActive && !ArtisansEyeConfig.autoForgeEnabled())
+        {
+            stop(); // 配置被中途关闭（理论路径：配置屏与铁砧屏不同屏），残留运行态立即停
+        }
         if (!autoActive)
         {
             return;
@@ -145,7 +147,7 @@ public final class AnvilAutoForge
             stop();
             return;
         }
-        if (++tickCounter % PRESS_INTERVAL_TICKS != 0)
+        if (++tickCounter % ArtisansEyeConfig.pressInterval() != 0)
         {
             return;
         }
