@@ -35,7 +35,7 @@ import org.jetbrains.annotations.Nullable;
 public final class OverheatProtection
 {
     private static final int BUTTON_HEIGHT = 12;
-    /** 按钮右缘与 UI 面板左缘的间距（"贴着边缘"） */
+    /** 按钮底缘与 UI 面板上缘的间距（整体悬在 UI 上方） */
     private static final int BUTTON_GAP = 2;
     private static final int BG_INACTIVE = 0x90000000;
     private static final int BG_ACTIVE = 0xA0204D14;
@@ -54,7 +54,7 @@ public final class OverheatProtection
 
     private OverheatProtection() {}
 
-    // ---------- 按钮（手绘，与 AnvilAutoForge 同款样式，挂在 UI 外左侧） ----------
+    // ---------- 按钮（手绘，与 AnvilAutoForge 同款样式，悬在 UI 上方右缘外——整合包两侧常驻 JEI，UI 外左右会被挡） ----------
 
     private static int buttonWidth(Font font)
     {
@@ -63,12 +63,14 @@ public final class OverheatProtection
 
     private static int buttonX(AbstractContainerScreen<?> screen, Font font)
     {
-        return screen.getGuiLeft() - BUTTON_GAP - buttonWidth(font);
+        // 右缘与 UI 最右侧对齐
+        return screen.getGuiLeft() + screen.getXSize() - buttonWidth(font);
     }
 
     private static int buttonY(AbstractContainerScreen<?> screen)
     {
-        return screen.getGuiTop() + 4;
+        // 整体位于 UI 上缘之外，底缘留 2px 间距
+        return screen.getGuiTop() - BUTTON_HEIGHT - BUTTON_GAP;
     }
 
     private static Component label()
