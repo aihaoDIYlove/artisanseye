@@ -8,6 +8,8 @@
   "label.artisanseye.placed_vessel_empty": "空",
   "button.artisanseye.anvil_auto": "自动",
   "button.artisanseye.anvil_auto_stop": "停止",
+  "button.artisanseye.anvil_auto_bloom": "自动锻铁",
+  "button.artisanseye.anvil_auto_bloom_stop": "停止锻铁",
   "artisanseye.config.title": "Artisan's Eye 配置",
   "artisanseye.config.auto_forge": "自动锻造",
   "artisanseye.config.auto_forge.desc": "开启后铁砧界面出现\"自动\"按钮，可由模组代为完成锻造敲击（默认关闭）",

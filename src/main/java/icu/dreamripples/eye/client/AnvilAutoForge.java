@@ -119,6 +119,7 @@ public final class AnvilAutoForge
             }
             else
             {
+                AnvilAutoBloom.cancel(); // 与自动锻铁互斥
                 autoActive = true;
                 stallCount = 0;
                 lastFingerprint = null;
@@ -204,6 +205,12 @@ public final class AnvilAutoForge
         autoActive = false;
         stallCount = 0;
         lastFingerprint = null;
+    }
+
+    /** 供 AnvilAutoBloom 启动时互斥调用 */
+    static void cancel()
+    {
+        stop();
     }
 
     /** 与 AnvilBlockEntity.work 相同的锤子判定：砧子锤子槽 → 主手 → 副手 */
