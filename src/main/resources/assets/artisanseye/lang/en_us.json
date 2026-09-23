@@ -5,5 +5,7 @@
   "hint.artisanseye.kaolin": "Kaolin: %s blocks",
   "hint.artisanseye.kaolin.here": "Kaolin is right beneath you",
   "hint.artisanseye.kaolin.more": " (%s more)",
-  "label.artisanseye.placed_vessel_empty": "Empty"
+  "label.artisanseye.placed_vessel_empty": "Empty",
+  "button.artisanseye.anvil_auto": "Auto",
+  "button.artisanseye.anvil_auto_stop": "Stop"
 }
