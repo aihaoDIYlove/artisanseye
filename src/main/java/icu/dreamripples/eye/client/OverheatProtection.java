@@ -34,6 +34,8 @@ import org.jetbrains.annotations.Nullable;
 @EventBusSubscriber(modid = ArtisansEye.MODID, value = Dist.CLIENT)
 public final class OverheatProtection
 {
+    private static final int BUTTON_HEIGHT = 12;
+    /** 按钮右缘与 UI 面板左缘的间距（"贴着边缘"） */
     private static final int BUTTON_GAP = 2;
     private static final int BG_INACTIVE = 0x90000000;
     private static final int BG_ACTIVE = 0xA0204D14;
@@ -41,7 +43,6 @@ public final class OverheatProtection
     private static final int BORDER_HOVER = 0xFFF0F0F0;
     private static final int BORDER_ACTIVE = 0xFF55FF55;
     private static final int TEXT_COLOR = 0xFFFFFF;
-    private static final String LABEL_TITLE = "button.artisanseye.overheat_title";
     private static final String LABEL_ON = "button.artisanseye.overheat_on";
     private static final String LABEL_OFF = "button.artisanseye.overheat_off";
     /** 连续 MAX_STALLS 轮扫描危险槽位集合毫无变化 = 取出失败（背包满），改为丢弃 */
@@ -53,33 +54,11 @@ public final class OverheatProtection
 
     private OverheatProtection() {}
 
-    // ---------- 按钮（手绘竖排：标题逐字一行一字，末行显示开/关状态，挂在 UI 外左侧） ----------
-
-    private static final int ROW_HEIGHT = 9;
-
-    private static String title()
-    {
-        return Component.translatable(LABEL_TITLE).getString();
-    }
-
-    private static String stateLabel()
-    {
-        return Component.translatable(enabled ? LABEL_ON : LABEL_OFF).getString();
-    }
+    // ---------- 按钮（手绘，与 AnvilAutoForge 同款样式，挂在 UI 外左侧） ----------
 
     private static int buttonWidth(Font font)
     {
-        int w = font.width(stateLabel());
-        for (final char c : title().toCharArray())
-        {
-            w = Math.max(w, font.width(String.valueOf(c)));
-        }
-        return w + 6;
-    }
-
-    private static int buttonHeight(Font font)
-    {
-        return (title().length() + 1) * ROW_HEIGHT + 4;
+        return font.width(label()) + 8;
     }
 
     private static int buttonX(AbstractContainerScreen<?> screen, Font font)
@@ -92,12 +71,16 @@ public final class OverheatProtection
         return screen.getGuiTop() + 4;
     }
 
+    private static Component label()
+    {
+        return Component.translatable(enabled ? LABEL_ON : LABEL_OFF);
+    }
+
     private static boolean hovered(AbstractContainerScreen<?> screen, double mouseX, double mouseY)
     {
         final Font font = Minecraft.getInstance().font;
         final int x = buttonX(screen, font), y = buttonY(screen);
-        return mouseX >= x && mouseX < x + buttonWidth(font)
-            && mouseY >= y && mouseY < y + buttonHeight(font);
+        return mouseX >= x && mouseX < x + buttonWidth(font) && mouseY >= y && mouseY < y + BUTTON_HEIGHT;
     }
 
     @SubscribeEvent
@@ -111,29 +94,18 @@ public final class OverheatProtection
         final Font font = Minecraft.getInstance().font;
         final int x = buttonX(screen, font), y = buttonY(screen);
         final int w = buttonWidth(font);
-        final int h = buttonHeight(font);
         final boolean hover = hovered(screen, event.getMouseX(), event.getMouseY());
+        final Component text = label();
 
         final GuiGraphics gui = event.getGuiGraphics();
-        gui.fill(x, y, x + w, y + h, enabled ? BG_ACTIVE : BG_INACTIVE);
+        gui.fill(x, y, x + w, y + BUTTON_HEIGHT, enabled ? BG_ACTIVE : BG_INACTIVE);
         // 1px 描边：开启=绿色，悬停=亮白，静止=暗灰
         final int border = enabled ? BORDER_ACTIVE : hover ? BORDER_HOVER : BORDER_IDLE;
         gui.fill(x, y, x + w, y + 1, border);
-        gui.fill(x, y + h - 1, x + w, y + h, border);
-        gui.fill(x, y + 1, x + 1, y + h - 1, border);
-        gui.fill(x + w - 1, y + 1, x + w, y + h - 1, border);
-        // 标题逐字竖排
-        int row = 0;
-        for (final char c : title().toCharArray())
-        {
-            final String s = String.valueOf(c);
-            gui.drawString(font, s, x + (w - font.width(s)) / 2, y + 2 + row * ROW_HEIGHT, TEXT_COLOR, true);
-            row++;
-        }
-        // 状态行：开=绿 关=红
-        final String state = stateLabel();
-        gui.drawString(font, state, x + (w - font.width(state)) / 2, y + 2 + row * ROW_HEIGHT,
-            enabled ? BORDER_ACTIVE : 0xFF5555, true);
+        gui.fill(x, y + BUTTON_HEIGHT - 1, x + w, y + BUTTON_HEIGHT, border);
+        gui.fill(x, y + 1, x + 1, y + BUTTON_HEIGHT - 1, border);
+        gui.fill(x + w - 1, y + 1, x + w, y + BUTTON_HEIGHT - 1, border);
+        gui.drawString(font, text, x + (w - font.width(text)) / 2, y + (BUTTON_HEIGHT - 8) / 2, TEXT_COLOR, true);
     }
 
     @SubscribeEvent
