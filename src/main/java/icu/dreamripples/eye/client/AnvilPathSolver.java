@@ -21,7 +21,6 @@ import org.jetbrains.annotations.Nullable;
  *       加上 work 落入 [target-leeway, target+leeway]（同一 config 值）；</li>
  *   <li>窗口语义：ForgeSteps 列表按时间序存放（末位=最后一步），每按一步窗口右移一位。</li>
  * </ul>
- * 状态总数 151 × 9³ = 110,079，单次求解亚毫秒级，玩家每次敲击后重算即可。
  */
 final class AnvilPathSolver
 {
