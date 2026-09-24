@@ -6,6 +6,7 @@
   "hint.artisanseye.kaolin.here": "高岭土就在脚下",
   "hint.artisanseye.kaolin.more": "（另有%s处）",
   "label.artisanseye.placed_vessel_empty": "空",
+  "label.artisanseye.bloomery_unlit": "待点燃（%s 件）",
   "button.artisanseye.anvil_auto": "自动",
   "button.artisanseye.anvil_auto_stop": "停止",
   "button.artisanseye.anvil_auto_bloom": "自动锻铁",
