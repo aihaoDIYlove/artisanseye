@@ -36,9 +36,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 自动锻铁：把生铁方坯全自动敲成锻铁锭，成品收回背包（满则按 Q 语义丢弃），再自动填充下一块，
- * 直至背包没有温度合适的铁坯。运行中发现焊接槽（第二输入）里有方坯会自动搬回背包——主槽被占用的
- * 瞬间任何一次 shift-click 都会被原版路由到那里，且永远不会被加工。
+ * 自动精炼：把锻打链中间态全自动敲成终点产物，成品收回背包（满则按 Q 语义丢弃），再自动填充下一块，
+ * 直至背包没有温度合适的待炼品。两条链（TFC 4.2.10 generated data，各段成分唯一 → 服务端自动选中下一段）：
+ * 生铁方坯→锻铁方坯→锻铁锭；生铁锭→高碳钢锭→钢锭。
+ * 运行中发现焊接槽（第二输入）里有待炼品会自动搬回背包——主槽被占用的瞬间任何一次 shift-click
+ * 都会被原版路由到那里，且永远不会被加工。
  */
 @EventBusSubscriber(modid = ArtisansEye.MODID, value = Dist.CLIENT)
 public final class AnvilAutoBloom
@@ -65,7 +67,7 @@ public final class AnvilAutoBloom
     private static int tickCounter;
     private static int stallCount;
     private static int collectTries;
-    /** "方坯在槽但配方还没同步"的连续等待周期数（超时 = 铁砧等级不够） */
+    /** "待炼品在槽但配方还没同步"的连续等待周期数（超时 = 铁砧等级不够） */
     private static int recipeWaitCycles;
     private static Action lastAction = Action.NONE;
     @Nullable private static String lastFingerprint;
@@ -108,7 +110,7 @@ public final class AnvilAutoBloom
             return false;
         }
         final Player player = Minecraft.getInstance().player;
-        return autoActive || (player != null && findHotBloom(player) >= 0);
+        return autoActive || (player != null && findHotRefiningInput(player) >= 0);
     }
 
     @SubscribeEvent
@@ -238,10 +240,10 @@ public final class AnvilAutoBloom
             collectTries = 0;
         }
 
-        // 完成态优先：锻铁锭 → 模拟 shift+左键收回背包（满则经确认门降级为模拟 Q 丢弃）。
+        // 完成态优先：链终点产物（锻铁锭/钢锭）→ 模拟 shift+左键收回背包（满则经确认门降级为模拟 Q 丢弃）。
         // 必须放在配方分支之前：铁砧 setAndUpdateSlots 会用记住的上次配方（lastRecipe，持久化在 NBT）
         // 给刚完成的新锭兜底选中一个砧子配方（如锭→板），getRecipe() 非空不代表"玩家在锻别的东西"。
-        if (isWroughtIronIngot(input))
+        if (isProduct(input))
         {
             recipeWaitCycles = 0;
             lastFingerprint = fingerprint;
@@ -251,9 +253,9 @@ public final class AnvilAutoBloom
             return;
         }
 
-        // 焊接槽（第二输入）自清理：主槽被占用的瞬间任何一次 shift-click 都会把方坯路由到这里
-        // （原版 moveItemStackTo 扫描顺序），而它永远不会被加工。发现方坯就搬回背包，只动方坯。
-        if (isBloom(second))
+        // 焊接槽（第二输入）自清理：主槽被占用的瞬间任何一次 shift-click 都会把待炼品路由到这里
+        // （原版 moveItemStackTo 扫描顺序），而它永远不会被加工。发现待炼品就搬回背包，只动链上物品。
+        if (isRefiningInput(second))
         {
             lastFingerprint = fingerprint;
             lastAction = Action.COLLECT_SECOND;
@@ -264,10 +266,10 @@ public final class AnvilAutoBloom
 
         if (recipe != null)
         {
-            // 敲打阶段 —— 判定与 AnvilAutoForge 相同，但不做"完成一击即停"（要连续推进两段配方）
-            if (!isBloom(input))
+            // 敲打阶段 —— 判定与 AnvilAutoForge 相同，但不做"完成一击即停"（要连续推进多段配方）
+            if (!isRefiningInput(input))
             {
-                stop(); // 主输入不是铁坯（玩家在锻别的东西），绝不代敲
+                stop(); // 主输入不是待炼品（玩家在锻别的东西），绝不代敲
                 return;
             }
             if (!hasHammer(mc.player, anvil) || !canWork(anvil))
@@ -291,25 +293,25 @@ public final class AnvilAutoBloom
 
         if (!input.isEmpty())
         {
-            if (isBloom(input))
+            if (isRefiningInput(input))
             {
-                // 刚填充的方坯等 1-2t 才能拿到服务端自动选中的配方；超时 = 铁砧等级不够
+                // 刚填充的待炼品等 1-2t 才能拿到服务端自动选中的配方；超时 = 铁砧等级不够
                 if (++recipeWaitCycles > MAX_STALLS)
                 {
                     stop();
                 }
                 return;
             }
-            stop(); // 未知物品且无配方，不动它（锭已在上方优先处理）
+            stop(); // 未知物品且无配方，不动它（链终点产物已在上方优先处理）
             return;
         }
 
-        // 主输入槽空 → 填充下一块温度合适的铁坯
+        // 主输入槽空 → 填充下一块温度合适的待炼品
         recipeWaitCycles = 0;
-        final int invSlot = findHotBloom(mc.player);
+        final int invSlot = findHotRefiningInput(mc.player);
         if (invSlot < 0)
         {
-            stop(); // 背包里没有温度合适的生铁方坯了，收工
+            stop(); // 背包里没有温度合适的待炼品了，收工
             return;
         }
         final int menuSlot = menuSlotForInventoryItem(screen.getMenu(), mc.player.getInventory(), invSlot);
@@ -348,28 +350,45 @@ public final class AnvilAutoBloom
 
     // ---------- 物品判定 ----------
 
-    /** 生铁/锻铁方坯（锻打链的两种中间态） */
+    /** 锻打链的两种铁坯中间态 */
     private static boolean isBloom(ItemStack stack)
     {
         return stack.is(TFCItems.RAW_IRON_BLOOM.get()) || stack.is(TFCItems.REFINED_IRON_BLOOM.get());
     }
 
+    /** 锻打链待炼品：链上任一中间态（铁坯两种 / 生铁锭 / 高碳钢锭） */
+    private static boolean isRefiningInput(ItemStack stack)
+    {
+        return isBloom(stack) || isChainIngot(stack, Metal.PIG_IRON) || isChainIngot(stack, Metal.HIGH_CARBON_STEEL);
+    }
+
+    /** 链终点产物：锻铁锭 / 钢锭 */
+    private static boolean isProduct(ItemStack stack)
+    {
+        return isWroughtIronIngot(stack) || isChainIngot(stack, Metal.STEEL);
+    }
+
+    private static boolean isChainIngot(ItemStack stack, Metal metal)
+    {
+        return stack.is(TFCItems.METAL_ITEMS.get(metal).get(Metal.ItemType.INGOT).get());
+    }
+
     private static boolean isWroughtIronIngot(ItemStack stack)
     {
-        return stack.is(TFCItems.METAL_ITEMS.get(Metal.WROUGHT_IRON).get(Metal.ItemType.INGOT).get());
+        return isChainIngot(stack, Metal.WROUGHT_IRON);
     }
 
     /**
-     * 背包扫描：第一块温度合适的铁坯（Inventory.items 下标，未找到返回 -1）。
-     * canWork = 温度 ≥ 锻造温度（item_heat 数据，方坯 921°）；客户端读同步栈拿到的已是当前真实温度。
+     * 背包扫描：第一块温度合适的待炼品（Inventory.items 下标，未找到返回 -1）。
+     * canWork = 温度 ≥ 锻造温度（item_heat 数据）；客户端读同步栈拿到的已是当前真实温度。
      */
-    private static int findHotBloom(Player player)
+    private static int findHotRefiningInput(Player player)
     {
         final List<ItemStack> items = player.getInventory().items;
         for (int i = 0; i < items.size(); i++)
         {
             final ItemStack stack = items.get(i);
-            if (isBloom(stack))
+            if (isRefiningInput(stack))
             {
                 final IHeat heat = HeatCapability.get(stack);
                 if (heat != null && heat.canWork())
