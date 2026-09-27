@@ -38,7 +38,7 @@ import org.jetbrains.annotations.Nullable;
 public final class BlastFurnaceHudOverlay
 {
     private static final int TEXT_COLOR = 0xFFFFFF;
-    private static final String FUEL_LEFT_KEY = "label.artisanseye.blast_furnace_fuel_left";
+    private static final String FUEL_LEFT_KEY = "label.artisanseye.fuel_left";
 
     private static final @Nullable Field INPUT_STACKS = field("inputStacks");
     private static final @Nullable Field CATALYST_STACKS = field("catalystStacks");
