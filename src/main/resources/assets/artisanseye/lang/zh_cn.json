@@ -5,5 +5,20 @@
   "hint.artisanseye.kaolin": "高岭土：%s格",
   "hint.artisanseye.kaolin.here": "高岭土就在脚下",
   "hint.artisanseye.kaolin.more": "（另有%s处）",
-  "label.artisanseye.placed_vessel_empty": "空"
+  "label.artisanseye.placed_vessel_empty": "空",
+  "label.artisanseye.bloomery_unlit": "待点燃（%s 件）",
+  "label.artisanseye.fuel_left": "剩余燃料：%s",
+  "button.artisanseye.anvil_auto": "自动",
+  "button.artisanseye.anvil_auto_stop": "停止",
+  "button.artisanseye.anvil_auto_bloom": "自动精炼",
+  "button.artisanseye.anvil_auto_bloom_stop": "停止精炼",
+  "button.artisanseye.overheat_on": "过温保护：开",
+  "button.artisanseye.overheat_off": "过温保护：关",
+  "artisanseye.config.title": "Artisan's Eye 配置",
+  "artisanseye.config.auto_forge": "自动锻造",
+  "artisanseye.config.auto_forge.desc": "开启后铁砧界面出现\"自动\"按钮，可由模组代为完成锻造敲击（默认关闭）",
+  "artisanseye.config.press_interval": "敲击间隔",
+  "artisanseye.config.press_interval.value": "敲击间隔：%s 刻",
+  "artisanseye.config.press_interval.desc": "自动敲击的间隔（游戏刻），最低 2，最高 20",
+  "artisanseye.config.dev_hint": "已识别测试账号，配置为关时也默认启用"
 }

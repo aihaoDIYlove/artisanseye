@@ -17,6 +17,8 @@ logoFile="logo.png"
 
 authors="aihaoDIYlove"
 
+displayURL="https://www.curseforge.com/minecraft/mc-mods/artisans-eye"
+
 description='''
 A helper mod for TerraFirmaCraft, mainly used to improve the ore prospecting and forging experience.
 '''

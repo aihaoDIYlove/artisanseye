@@ -20,20 +20,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * 砧子工作界面叠加层：
- * 1. 锻造条右端固定槽位显示目标值（金，与目标指针行对齐）与当前值（白，与进度箭头行对齐）；
- * 2. 悬停八个锻造步骤按钮时，在 GUI 右缘信息列显示该操作的具体偏移量（负值红色、正值绿色）；
- * 3. 最短路径提示：BFS 求解从当前状态到完成的最短敲击序列（见 {@link AnvilPathSolver}），
- *    推荐按钮边框闪烁（方向语义配色），信息列显示剩余步数，无解时如实提示。
- * <p>
- * 布局约束：TFC 砧子 GUI 纵向极密（规则图标 13-35 / 步骤记录 34-50 / 按钮两行 56-90 /
- * 锻造条 94-109 / 物品栏标签 110+），且网格右侧被计划按钮 (137,56)、锤子槽 (138,76)、
- * JEI 提示箭头 (141,40) 占据——因此所有叠加内容统一右对齐到 GUI 右缘（xSize-2），
- * 放置在经像素级排查确认无元素的区域。
- * <p>
- * 全部数据来自锻造数据组件（随物品自动同步客户端），无 mixin、无自定义包。
- */
 @EventBusSubscriber(modid = ArtisansEye.MODID, value = Dist.CLIENT)
 public final class AnvilScreenOverlay
 {

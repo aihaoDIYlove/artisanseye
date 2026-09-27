@@ -1,10 +1,7 @@
 package icu.dreamripples.eye.client;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import icu.dreamripples.eye.ArtisansEye;
-
 import net.dries007.tfc.common.blockentities.PlacedItemBlockEntity;
 import net.dries007.tfc.common.component.heat.HeatCapability;
 import net.dries007.tfc.common.component.mold.Vessel;
@@ -25,23 +22,9 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * 地面放置物速览（RenderGuiEvent.Post，零 mixin）：
- * V 键放置 = 服务端在所瞄方块顶面上方生成 tfc:placed_item + PlacedItemBlockEntity
- * （4 个角槽 + 大物品中央槽 0），库存随 markForSync 全量同步到客户端——与木炭炉同链路，
- * 纯客户端读方块实体即可。
- * 只显示准星命中的那一格：槽位判定复用 TFC 自家的 getSlotSelected（按命中点象限，
- * 与右键拿取/放入完全一致），大物品看 holdingLargeItem 固定中央槽。
- * 内容：小缸（Vessel.get != null）画缸内物品图标 + 金属液行（如有）+ 温度（如有），同行并存；
- * 空且冷的小缸明示"空"（唯一自有语言键）；其他物品只在热时显示温度，冷的不画（本身看得见）。
- * 温度一律走 HeatCapability.getTemperature——TFC 热量是惰性计算：组件存"上次温度 + 日历刻"，
- * 读取时按流逝日历时间折算，地上放置期间无 ticker 也在持续冷却，读到的即"拿起那一刻"的温度，
- * 无需自行复算。注意该读取会 sanitize 就地改写客户端组件副本（无害：服务端不可见，
- * 下次同步覆盖），因此不缓存 ItemStack，每帧现读。
- * ShelfBlockEntity 继承 PlacedItemBlockEntity，架子底面的物品同链路生效。
- * 图标与文字统一 ×0.7（用户定稿 2026-09-21，16px 图标/9px 字在全尺寸下偏大）。
- * 文案除空缸标签外全部复用 TFC 翻译组件（fluidUnitsOf 的 "%s mB的%s" 自带名称，不另拼前缀）。
- */
+
+// 地面放置物速览
+
 @EventBusSubscriber(modid = ArtisansEye.MODID, value = Dist.CLIENT)
 public final class PlacedItemOverlay
 {
@@ -130,7 +113,7 @@ public final class PlacedItemOverlay
         final float textWidth = text != null ? font.width(text) * SCALE : 0f;
         final float width = iconsWidth + (!icons.isEmpty() && text != null ? TEXT_GAP : 0f) + textWidth;
 
-        // 布局同 ForgeFuelOverlay：右侧越界翻到准星左侧，再夹到屏幕内；垂直居中、底边避开快捷栏
+        // 布局同 ForgeHudOverlay：右侧越界翻到准星左侧，再夹到屏幕内；垂直居中、底边避开快捷栏
         float x = mc.getWindow().getGuiScaledWidth() / 2f + CARD_OFFSET_X;
         if (x + width > mc.getWindow().getGuiScaledWidth() - SCREEN_MARGIN)
         {

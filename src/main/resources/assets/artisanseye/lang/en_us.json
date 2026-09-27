@@ -5,5 +5,20 @@
   "hint.artisanseye.kaolin": "Kaolin: %s blocks",
   "hint.artisanseye.kaolin.here": "Kaolin is right beneath you",
   "hint.artisanseye.kaolin.more": " (%s more)",
-  "label.artisanseye.placed_vessel_empty": "Empty"
+  "label.artisanseye.placed_vessel_empty": "Empty",
+  "label.artisanseye.bloomery_unlit": "Unlit (%s items)",
+  "label.artisanseye.fuel_left": "Fuel left: %s",
+  "button.artisanseye.anvil_auto": "Auto",
+  "button.artisanseye.anvil_auto_stop": "Stop",
+  "button.artisanseye.anvil_auto_bloom": "Auto Refine",
+  "button.artisanseye.anvil_auto_bloom_stop": "Stop Refine",
+  "button.artisanseye.overheat_on": "Overheat: On",
+  "button.artisanseye.overheat_off": "Overheat: Off",
+  "artisanseye.config.title": "Artisan's Eye Options",
+  "artisanseye.config.auto_forge": "Auto Forging",
+  "artisanseye.config.auto_forge.desc": "Shows an Auto button on the anvil screen and lets the mod strike for you (off by default)",
+  "artisanseye.config.press_interval": "Press Interval",
+  "artisanseye.config.press_interval.value": "Press interval: %s ticks",
+  "artisanseye.config.press_interval.desc": "Interval between automatic strikes in game ticks (2-20)",
+  "artisanseye.config.dev_hint": "Test account detected: enabled by default even when the option is off"
 }
